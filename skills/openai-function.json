@@ -1,0 +1,136 @@
+{
+    "functions": [
+        {
+            "name": "facebook_post_feed",
+            "description": "Post text, images, or video to a Facebook personal profile feed. Returns the post URL on success.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string",
+                        "description": "Account ID configured in accounts/accounts.json (e.g. 'pham_thanh')"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Post text content"
+                    },
+                    "media_paths": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Absolute paths to image or video files to attach"
+                    },
+                    "schedule": {
+                        "type": "string",
+                        "description": "ISO 8601 datetime to post at (e.g. '2026-03-06T10:00:00+07:00'). If omitted, posts immediately."
+                    },
+                    "auto_approve": {
+                        "type": "boolean",
+                        "description": "Publish immediately without user confirmation. Defaults to false.",
+                        "default": false
+                    }
+                },
+                "required": [
+                    "account"
+                ]
+            }
+        },
+        {
+            "name": "facebook_post_story",
+            "description": "Post an image or video as a Facebook Story (visible for 24 hours).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string",
+                        "description": "Account ID configured in accounts/accounts.json"
+                    },
+                    "media_path": {
+                        "type": "string",
+                        "description": "Absolute path to image or video file for the story"
+                    }
+                },
+                "required": [
+                    "account",
+                    "media_path"
+                ]
+            }
+        },
+        {
+            "name": "facebook_post_reel",
+            "description": "Upload and publish a Facebook Reel (short video). Returns reel URL after Facebook processing.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string",
+                        "description": "Account ID configured in accounts/accounts.json"
+                    },
+                    "video_path": {
+                        "type": "string",
+                        "description": "Absolute path to the video file (.mp4, .mov, etc.)"
+                    },
+                    "caption": {
+                        "type": "string",
+                        "description": "Caption text for the reel"
+                    }
+                },
+                "required": [
+                    "account",
+                    "video_path"
+                ]
+            }
+        },
+        {
+            "name": "facebook_account_list",
+            "description": "List all registered Facebook accounts with their status (session active, fingerprint, proxy).",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "facebook_account_test",
+            "description": "Verify that a Facebook account session is still valid (not expired).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "type": "string",
+                        "description": "Account ID to test"
+                    }
+                },
+                "required": [
+                    "account"
+                ]
+            }
+        },
+        {
+            "name": "facebook_proxy_health",
+            "description": "Run health checks on all registered proxies and update their status.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    ],
+    "implementation": {
+        "type": "shell",
+        "working_directory": "<skill_root>",
+        "command_map": {
+            "facebook_post_feed": "python scripts/post.py --account {account} {text_args} {media_args} {schedule_args} {approve_flag}",
+            "facebook_post_story": "python scripts/test_story.py --cookie-file accounts/{account}/cookies.json --media {media_path}",
+            "facebook_post_reel": "python scripts/test_reel.py --cookie-file accounts/{account}/cookies.json --media {video_path} --caption {caption}",
+            "facebook_account_list": "python scripts/account_manager.py list",
+            "facebook_account_test": "python scripts/account_manager.py test --id {account}",
+            "facebook_proxy_health": "python scripts/proxy_manager.py health"
+        },
+        "output_parsing": {
+            "success_prefix": "OK:",
+            "error_prefix": "FAIL:",
+            "url_pattern": "url: (https://[^\\s|]+)",
+            "account_pattern": "account: ([^\\s]+)"
+        }
+    }
+}

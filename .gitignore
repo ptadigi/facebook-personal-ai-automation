@@ -1,0 +1,42 @@
+*.pyc
+__pycache__/
+*.pyo
+
+# Session cookies — NEVER commit
+cookies.json
+accounts/*/cookies.json
+
+# Persistent browser profiles — large, local only
+accounts/*/profile/
+
+# Test screenshots (generated at runtime)
+test_result_*.png
+test_result_*.webp
+
+# Run logs (generated at runtime)
+references/run-log.jsonl
+proxies/proxy-usage.jsonl
+references/selector-map.history.jsonl
+
+# Uploaded media (don't commit user videos/images)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+test_image_*.jpg
+test_image_*.png
+
+# Python envs
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

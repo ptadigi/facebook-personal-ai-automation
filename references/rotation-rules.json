@@ -1,0 +1,27 @@
+{
+    "version": "1.0.0",
+    "updated_at": "2026-03-05T11:56:00+07:00",
+    "strategy": "sticky_per_account",
+    "notes": {
+        "sticky_per_account": "Each account always uses its assigned proxy. Rotate only on failure.",
+        "round_robin": "Rotate proxy for each new post regardless of account.",
+        "random": "Pick a random healthy proxy for each post."
+    },
+    "rotate_on_fail": true,
+    "fail_threshold": 2,
+    "cooldown_minutes": 30,
+    "blacklist_after_fails": 5,
+    "blacklist_duration_hours": 24,
+    "health_check_url": "https://api.ipify.org?format=json",
+    "health_check_timeout_s": 10,
+    "health_check_interval_minutes": 60,
+    "ban_detection_keywords": [
+        "checkpoint",
+        "temporarily blocked",
+        "unusual activity",
+        "confirm your identity",
+        "security check"
+    ],
+    "prefer_same_country": true,
+    "fallback_to_direct": false
+}

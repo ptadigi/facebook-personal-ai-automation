@@ -1,0 +1,159 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-03-05T09:40:00+07:00",
+  "note": "Selectors are tried in order: primary first, then fallbacks[0], [1], [2]. If all fail, DOM_CHANGED is raised.",
+  "selectors": {
+    "open_composer": {
+      "description": "The 'What's on your mind?' clickable area that opens the post composer",
+      "primary": "[aria-label=\"What's on your mind?\"]",
+      "fallbacks": [
+        "[data-testid='status-attachment-mentions-input']",
+        "div[role='button']:has-text(\"What's on your mind\")",
+        "//div[@role='button'][contains(., \"What's on your mind\")]"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "text_input": {
+      "description": "The contenteditable richtext area inside the composer where post text is typed",
+      "primary": "div[contenteditable='true'][role='textbox']",
+      "fallbacks": [
+        "[data-testid='react-composer-root'] div[contenteditable='true']",
+        "[aria-label*='post'][contenteditable='true']",
+        "//div[@role='textbox' and @contenteditable='true']"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "media_button": {
+      "description": "Photo/video attachment button in the composer toolbar",
+      "primary": "[aria-label='Photo/video']",
+      "fallbacks": [
+        "[aria-label='Photo']",
+        "[data-testid='photo-video-button']",
+        "div[role='button'][aria-label*='Photo']",
+        "//div[@role='button'][contains(@aria-label,'Photo')]"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "file_input": {
+      "description": "Hidden file input element triggered after clicking media button",
+      "primary": "input[type='file'][accept*='image']",
+      "fallbacks": [
+        "input[type='file'][accept*='video']",
+        "input[type='file']",
+        "//input[@type='file']"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "schedule_entry": {
+      "description": "Button/menu item to access scheduling options inside the composer",
+      "primary": "[aria-label='Schedule post']",
+      "fallbacks": [
+        "[aria-label*='Schedule']",
+        "div[role='menuitem']:has-text('Schedule')",
+        "div[role='button']:has-text('Schedule post')",
+        "//div[@role='menuitem'][contains(.,'Schedule')]"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "publish_button": {
+      "description": "The final blue 'Post' button that submits the post",
+      "primary": "div[aria-label='Post'][role='button']",
+      "fallbacks": [
+        "[data-testid='react-composer-post-button']",
+        "div[role='button']:has-text('Post')",
+        "//div[@role='button'][@aria-label='Post']"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "schedule_confirm": {
+      "description": "Confirm/Save button inside the scheduling dialog",
+      "primary": "div[role='dialog'] div[role='button'][aria-label='Schedule']",
+      "fallbacks": [
+        "div[role='dialog'] div[role='button']:has-text('Schedule')",
+        "[data-testid='schedule-confirm-button']",
+        "//div[@role='dialog']//div[@role='button'][contains(.,'Schedule')]"
+      ],
+      "last_verified": "2026-03-05T08:41:00+07:00"
+    },
+    "story_upload_button": {
+      "description": "Button to start photo story creation on /stories/create page",
+      "primary": "[aria-label='Tai anh len']",
+      "fallbacks": [
+        "[aria-label='Tao tin dang anh']",
+        "div[role='button']:has-text('Tao tin dang anh')",
+        "//div[@role='button'][contains(@aria-label,'Tai anh')]"
+      ],
+      "last_verified": "2026-03-05T09:40:00+07:00"
+    },
+    "story_file_input": {
+      "description": "Hidden file input in Story creator for photo/video upload",
+      "primary": "input[type='file'][accept*='image']",
+      "fallbacks": [
+        "input[type='file'][accept*='video']",
+        "input.x1s85apg",
+        "input[type='file']"
+      ],
+      "last_verified": "2026-03-05T09:40:00+07:00"
+    },
+    "story_publish_button": {
+      "description": "Publish button in Story editor (Chia se len tin)",
+      "primary": "[aria-label='Chia se len tin']",
+      "fallbacks": [
+        "div[role='button']:has-text('Chia se len tin')",
+        "[aria-label='Share to story']",
+        "div[role='button']:has-text('Dang tin')"
+      ],
+      "last_verified": "2026-03-05T09:40:00+07:00"
+    },
+    "reel_create_button": {
+      "description": "Button to open Reel creator modal on profile/reels page",
+      "primary": "[aria-label='Tao thuoc phim']",
+      "fallbacks": [
+        "div[role='button']:has-text('Tao thuoc phim')",
+        "[aria-label='Create reel']",
+        "div[role='button']:has-text('Tao thuoc phim')"
+      ],
+      "last_verified": "2026-03-05T10:44:00+07:00"
+    },
+    "reel_file_input": {
+      "description": "Hidden file input in Reel creator for video upload",
+      "primary": "input[type='file'][accept*='video']",
+      "fallbacks": [
+        "input[type='file'][accept*='mp4']",
+        "input[type='file']"
+      ],
+      "last_verified": "2026-03-05T10:44:00+07:00"
+    },
+    "reel_next_button": {
+      "description": "Next/Tiep button to advance through Reel multi-step flow (click up to 3 times)",
+      "primary": "div[role='button']:has-text('Tiep')",
+      "fallbacks": [
+        "div[role='button']:has-text('Tiep')",
+        "div[role='button']:has-text('Next')"
+      ],
+      "last_verified": "2026-03-05T10:44:00+07:00"
+    },
+    "reel_publish_button": {
+      "description": "Final publish button in Reel settings screen (Cap dat thuoc phim)",
+      "primary": "div[role='button']:has-text('Dang')",
+      "fallbacks": [
+        "div[role='button']:has-text('Chia se')",
+        "div[role='button']:has-text('Share')",
+        "div[role='button']:has-text('Publish')"
+      ],
+      "last_verified": "2026-03-05T10:44:00+07:00"
+    }
+  },
+  "reel_flow": {
+    "url": "https://www.facebook.com/<username>/reels/",
+    "steps": [
+      "1. Click reel_create_button",
+      "2. set_input_files on reel_file_input",
+      "3. Wait 30s for video to process",
+      "4. Click reel_next_button (Chinh sua -> Tiep)",
+      "5. Click reel_next_button again (Cai dat -> Tiep)",
+      "6. Click reel_publish_button (Dang)",
+      "7. Wait for toast: Thuoc phim dang duoc xu ly"
+    ]
+  }
+}

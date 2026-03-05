@@ -1,0 +1,20 @@
+{
+    "_comment": "Copy this file to config.json and fill in your values. Do NOT commit config.json to version control.",
+    "cookie_file": "cookies.json",
+    "profile_url": "https://www.facebook.com",
+    "headless": false,
+    "timeout_ms": 10000,
+    "timezone": "Asia/Ho_Chi_Minh",
+    "auto_approve": false,
+    "selector_map": "references/selector-map.json",
+    "run_log": "references/run-log.jsonl",
+    "schedule_queue": "references/schedule-queue.json",
+    "retry": {
+        "max_attempts": 3,
+        "backoff_seconds": [
+            2,
+            5,
+            10
+        ]
+    }
+}

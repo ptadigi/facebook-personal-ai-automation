@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-03-05T12:03:16+07:00",
+  "accounts": [
+    {
+      "id": "pham_thanh",
+      "display_name": "Pham Thanh",
+      "profile_url": "https://www.facebook.com/pham.thanh.756452",
+      "reels_url": "https://www.facebook.com/pham.thanh.756452/reels/",
+      "cookies_path": "accounts/pham_thanh/cookies.json",
+      "fingerprint_path": "accounts/pham_thanh/fingerprint.json",
+      "profile_dir": "accounts/pham_thanh/profile",
+      "proxy_id": null,
+      "active": true,
+      "daily_post_limit": 20,
+      "daily_post_count": 0,
+      "last_post": null,
+      "notes": "Primary test account — ban day la pham_thanh"
+    }
+  ]
+}
