@@ -1,5 +1,11 @@
+---
+last_updated: 2026-03-05
+compatible_scripts: v2.1.x
+skill: facebook-personal-ai-automation
+---
+
 # Claude Code Integration Guide
-**Skill:** `facebook-personal-ai-automation` · **Version:** 2.1.0
+**Version:** 2.1.0 · **Compatible scripts:** v2.1.x · **Last updated:** 2026-03-05
 
 ---
 
@@ -69,11 +75,30 @@ Read the file skills/claude-skill.md and use it as your tool contract for all Fa
 
 ---
 
+## Confirmation Policy (No Surprise Publish)
+
+- **Không set `auto_approve=true`** trừ khi user yêu cầu post ngay (`--auto-approve` hoặc "đăng ngay").
+- Flow mặc định: **validate → preview (dry-run) → confirm → publish**.
+- Nếu user nói "test" hoặc "xem trước" → bắt buộc dùng `--dry-run`.
+- Nếu intent không rõ ràng → hỏi xác nhận trước khi chạy lệnh publish thực.
+
+```python
+# Claude decision logic
+if "test" in user_input.lower() or "xem trước" in user_input.lower():
+    dry_run = True
+elif explicit_approve_requested:
+    auto_approve = True
+else:
+    # Ask for confirmation before real publish
+    preview = bash("python scripts/post.py ... --dry-run")
+    # Show preview to user, wait for confirmation
+```
+
+---
+
 ## Input Validation (Claude MUST check before calling bash)
 
 ```python
-# Claude sends this to bash_tool before the actual post command:
-
 import json, os
 from pathlib import Path
 from datetime import datetime, timezone
@@ -211,7 +236,7 @@ Claude:  [Tính datetime: 2026-03-06T18:00:00+07:00]
          $ python scripts/post.py --account pham_thanh \
              --media sunset.jpg \
              --schedule "2026-03-06T18:00:00+07:00" --auto-approve
-         
+
          → OK: scheduled 2026-03-06T18:00:00+07:00
          ✅ Đã đặt lịch lúc 18:00 ngày 06/03/2026
 ```

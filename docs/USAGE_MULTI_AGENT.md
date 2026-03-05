@@ -45,37 +45,37 @@ Cần schedule bài hàng ngày theo lịch cố định
 ## Architecture Overview
 
 ```
-                        ┌─────────────────────────────────┐
-                        │         User / Operator          │
-                        └──────┬──────────┬───────┬────────┘
-                               │          │       │
-                    Chat UI    │     CLI  │  Code │  Agent Pipeline
-                               ▼          ▼       ▼
-              ┌─────────────────┐  ┌──────────┐  ┌─────────────┐
-              │    Clawbot      │  │  Claude  │  │ Antigravity │
-              │  (chat intent   │  │   Code   │  │ (autonomous) │
-              │   resolution)   │  │ (bash)   │  │ (run_command)|
-              └────────┬────────┘  └────┬─────┘  └──────┬──────┘
-                       │               │                │
-                       └───────────────┴────────────────┘
-                                       │
-                          ┌────────────▼────────────┐
-                          │   Output Contract        │
-                          │   OK: published | url:   │
-                          │   OK: scheduled          │
-                          │   WAIT_APPROVAL          │
-                          │   FAIL: <CODE> - reason  │
-                          └────────────┬────────────┘
-                                       │
-                    ┌──────────────────┼──────────────────┐
-                    ▼                  ▼                   ▼
-             ┌────────────┐   ┌──────────────┐   ┌──────────────┐
-             │  post.py   │   │ test_story.py│   │ test_reel.py │
-             │ scheduler  │   │              │   │              │
-             └────────────┘   └──────────────┘   └──────────────┘
-                    │
-         ┌──────────┼──────────┐
-         ▼          ▼          ▼
+                        
+                                 User / Operator          
+                        
+                                                
+                    Chat UI         CLI    Code   Agent Pipeline
+                                                
+                  
+                  Clawbot          Claude     Antigravity 
+                (chat intent        Code      (autonomous) 
+                 resolution)      (bash)      (run_command)|
+                  
+                                                      
+                       
+                                       
+                          
+                             Output Contract        
+                             OK: published | url:   
+                             OK: scheduled          
+                             WAIT_APPROVAL          
+                             FAIL: <CODE> - reason  
+                          
+                                       
+                    
+                                                         
+                   
+               post.py       test_story.py    test_reel.py 
+              scheduler                                    
+                   
+                    
+         
+                             
    accounts.json  proxies  selector-map.json
 ```
 
@@ -172,22 +172,22 @@ All agents follow the same error decision tree:
 
 ```
 FAIL: AUTH_REQUIRED
-  → ALWAYS escalate to human (needs new cookies)
-  → NEVER auto-retry
+   ALWAYS escalate to human (needs new cookies)
+   NEVER auto-retry
 
 FAIL: DOM_CHANGED
-  → TRY: run dom_learner.py
-  → IF dom_learner OK: retry once
-  → IF dom_learner fails OR second DOM_CHANGED: escalate
+   TRY: run dom_learner.py
+   IF dom_learner OK: retry once
+   IF dom_learner fails OR second DOM_CHANGED: escalate
 
 FAIL: RATE_LIMIT
-  → AUTO: queue retry +45 minutes via scheduler
-  → IF 3+ in same day for same account: escalate
+   AUTO: queue retry +45 minutes via scheduler
+   IF 3+ in same day for same account: escalate
 
 FAIL: PUBLISH_FAILED
-  → WAIT: 10 seconds
-  → AUTO: retry once
-  → IF still fails: escalate with screenshot info
+   WAIT: 10 seconds
+   AUTO: retry once
+   IF still fails: escalate with screenshot info
 ```
 
 ---
@@ -251,3 +251,12 @@ WHEN FB DOES UI UPDATE:
 [ ] Verify: selector-map.json updated (check "updated_at" timestamp)
 [ ] Re-test: post.py --account X --text "test" --dry-run
 ```
+
+
+
+## Known Limitations
+- Video posts may return 'URL not captured' even when publish succeeds; verify on profile feed.
+- Reel permalink can lag 1-5 minutes after publish while Facebook processes media.
+- RATE_LIMIT events may require cooldown and scheduled retry.
+- DOM changes can temporarily break selectors until dom_learner/manual update is applied.
+
