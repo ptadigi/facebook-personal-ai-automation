@@ -20,6 +20,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+__version__ = "2.1.0"
+
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SELECTOR_MAP = SKILL_ROOT / "references" / "selector-map.json"
 DEFAULT_HISTORY = SKILL_ROOT / "references" / "selector-map.history.jsonl"
@@ -95,6 +97,24 @@ def load_cookies(cookie_file: str) -> list[dict]:
     return data
 
 
+def load_fingerprint(account_id: str | None) -> dict | None:
+    """
+    P2-5: Load saved fingerprint for an account so dom_learner can use
+    the real account UA/viewport instead of the default headless signature.
+    Returns None if no fingerprint file is found.
+    """
+    if not account_id:
+        return None
+    fp_path = SKILL_ROOT / "accounts" / account_id / "fingerprint.json"
+    if not fp_path.exists():
+        return None
+    try:
+        with fp_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
 def inject_cookies(context, cookies: list[dict]):
     pw_cookies = []
     for c in cookies:
@@ -168,6 +188,9 @@ def append_history(history_path: Path, record: dict):
 def main():
     parser = argparse.ArgumentParser(description="Discover and update Facebook DOM selectors")
     parser.add_argument("--cookie-file", required=True, help="Path to Facebook session cookie JSON")
+    parser.add_argument("--account", default=None,
+                        help="P2-5: Account ID to load fingerprint from (e.g. pham_thanh). "
+                             "Uses account UA/viewport instead of default headless signature.")
     parser.add_argument("--headless", action="store_true", help="Run browser headlessly")
     parser.add_argument("--interactive", action="store_true",
                         help="Pause at each action for manual verification")
@@ -190,6 +213,28 @@ def main():
         print(f"[ERROR] Cannot load cookies: {exc}")
         sys.exit(1)
 
+    # P2-5: Load fingerprint for realistic browser context
+    fp = load_fingerprint(args.account)
+    if fp:
+        print(f"[dom_learner] Fingerprint loaded for account '{args.account}': {fp.get('user_agent', '')[:60]}...")
+        ctx_opts = {
+            "viewport": {"width": fp.get("viewport_width", 1280), "height": fp.get("viewport_height", 800)},
+            "user_agent": fp.get("user_agent", ""),
+            "locale": fp.get("locale", "vi-VN"),
+            "timezone_id": fp.get("timezone_id", "Asia/Ho_Chi_Minh"),
+        }
+        if fp.get("init_script"):
+            _fp_init_script = fp["init_script"]
+        else:
+            _fp_init_script = None
+    else:
+        if args.account:
+            print(f"[dom_learner] ⚠  No fingerprint found for '{args.account}' — using defaults.")
+        else:
+            print("[dom_learner] ⚠  No --account specified — using default viewport/UA (bot-detection risk!).")
+        ctx_opts = {"viewport": {"width": 1280, "height": 800}}
+        _fp_init_script = None
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -200,7 +245,9 @@ def main():
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=args.headless)
-        context = browser.new_context(viewport={"width": 1280, "height": 800})
+        context = browser.new_context(**ctx_opts)
+        if _fp_init_script:
+            context.add_init_script(_fp_init_script)
         inject_cookies(context, cookies)
         page = context.new_page()
 

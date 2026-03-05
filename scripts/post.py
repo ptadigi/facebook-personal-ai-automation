@@ -20,8 +20,11 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
+
+__version__ = "2.1.0"
 
 # ---------------------------------------------------------------------------
 # Paths (relative to this script's parent directory = skill root)
@@ -53,21 +56,47 @@ def _now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def log_event(run_log_path: Path, phase: str, status: str, note: str, error_code: str | None = None):
-    """Append a structured JSON line to run-log.jsonl."""
+def log_event(
+    run_log_path: Path,
+    phase: str,
+    status: str,
+    note: str,
+    error_code: str | None = None,
+    *,
+    run_id: str = "",
+    account_id: str = "",
+    url: str | None = None,
+):
+    """P2-2: Append a structured JSON line to run-log.jsonl with run_id + account_id trace."""
     record = {
-        "timestamp": _now_iso(),
-        "phase": phase,
-        "status": status,
-        "note": note,
+        "timestamp":  _now_iso(),
+        "version":    __version__,
+        "run_id":     run_id,
+        "account_id": account_id,
+        "phase":      phase,
+        "status":     status,
+        "note":       note,
         "error_code": error_code,
+        "url":        url,
     }
     try:
         run_log_path.parent.mkdir(parents=True, exist_ok=True)
         with run_log_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        # P2-3: log rotation — keep last 2000 lines to prevent unbounded growth
+        _rotate_log_if_needed(run_log_path, max_lines=2000)
     except Exception as exc:
         print(f"[WARN] Could not write to run log: {exc}", file=sys.stderr)
+
+
+def _rotate_log_if_needed(path: Path, max_lines: int = 2000) -> None:
+    """P2-3: Trim run-log.jsonl to the most recent max_lines entries."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        if len(lines) > max_lines:
+            path.write_text("".join(lines[-max_lines:]), encoding="utf-8")
+    except Exception:
+        pass  # rotation is best-effort
 
 
 def fail(msg: str, error_code: str, run_log: Path):
@@ -342,46 +371,42 @@ def publish_post(page, selectors: dict, timeout: int, run_log: Path) -> bool:
 
 def extract_post_url(page) -> str | None:
     """
-    After publishing, scan the feed for the URL of the newest post.
-    Returns the full post permalink URL, or None if not found.
+    P2-6: After publishing, poll for up to 10s for the newest post permalink.
 
     Strategy:
-    1. Wait briefly for feed to refresh
-    2. Look for <a href> anchors matching /posts/, /permalink/, /videos/, /photo/
-       in the first visible post card by the logged-in user
-    3. Fallback: return the current page URL if it contains a post ID
+    1. Poll every 1s for up to 10s for feed links matching /posts/, /permalink/, etc.
+    2. Fallback: return current page URL if it contains a post identifier.
     """
-    try:
-        page.wait_for_timeout(2500)  # let feed re-render
+    post_link_patterns = [
+        "a[href*='/posts/']",
+        "a[href*='/permalink/']",
+        "a[href*='story_fbid']",
+        "a[href*='/videos/']",
+        "a[href*='/photo/']",
+    ]
+    keywords = ["/posts/", "/permalink/", "story_fbid", "/videos/", "/photo/"]
 
-        # Try to find post permalink links in the feed
-        post_link_patterns = [
-            "a[href*='/posts/']",
-            "a[href*='/permalink/']",
-            "a[href*='story_fbid']",
-            "a[href*='/videos/']",
-            "a[href*='/photo/']",
-        ]
+    deadline = time.time() + 10  # poll for up to 10 seconds
+    while time.time() < deadline:
+        try:
+            for pattern in post_link_patterns:
+                links = page.query_selector_all(pattern)
+                for link in links:
+                    href = link.get_attribute("href") or ""
+                    if any(kw in href for kw in keywords):
+                        if href.startswith("/"):
+                            href = "https://www.facebook.com" + href
+                        return href.split("?")[0] if "story_fbid" not in href else href
 
-        for pattern in post_link_patterns:
-            links = page.query_selector_all(pattern)
-            for link in links:
-                href = link.get_attribute("href") or ""
-                # Filter out navigation links (must look like a post URL)
-                if any(kw in href for kw in ["/posts/", "/permalink/", "story_fbid", "/videos/", "/photo/"]):
-                    if href.startswith("/"):
-                        href = "https://www.facebook.com" + href
-                    # Strip query params noise but keep story_fbid
-                    return href.split("?")[0] if "story_fbid" not in href else href
+            # Fallback: check current URL
+            current = page.url
+            if any(kw in current for kw in keywords):
+                return current
+        except Exception:
+            pass
+        time.sleep(1)
 
-        # Fallback: current URL if it has changed to a post page
-        current = page.url
-        if any(kw in current for kw in ["/posts/", "/permalink/", "/videos/", "/photo/"]):
-            return current
-
-        return None
-    except Exception:
-        return None
+    return None  # URL not found after 10s polling
 
 
 def extract_story_url(page, username: str = "") -> str | None:

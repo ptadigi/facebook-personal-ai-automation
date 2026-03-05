@@ -48,8 +48,13 @@ import subprocess
 import sys
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+
+__version__ = "2.1.0"
+# P2-4: max concurrent account posts (env override: SCHEDULER_MAX_WORKERS)
+MAX_WORKERS = int(os.environ.get("SCHEDULER_MAX_WORKERS", "3"))
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUEUE = SKILL_ROOT / "references" / "schedule-queue.json"
@@ -214,24 +219,24 @@ def _last_fire_time(queue: list[dict], account_id: str, current_id: str) -> date
 
 def run_daemon(queue_path: Path, run_log: Path):
     print(f"[scheduler] Daemon started. Queue: {queue_path}")
-    print(f"[scheduler] Check interval: {CHECK_INTERVAL}s. Press Ctrl+C to stop.\n")
-    log_event(run_log, "scheduler", "ok", "Daemon started")
+    print(f"[scheduler] Check interval: {CHECK_INTERVAL}s | Workers: {MAX_WORKERS} | Post gap: {MIN_POST_GAP_MINUTES}min")
+    print("[scheduler] Press Ctrl+C to stop.\n")
+    log_event(run_log, "scheduler", "ok", f"Daemon started (workers={MAX_WORKERS})")
 
     while True:
         queue = load_queue(queue_path)
         now = _now()
-        changed = False
+        due_entries = []
 
         for entry in queue:
             if entry.get("status") != "pending":
                 continue
-
             try:
                 sched_dt = parse_dt(entry["scheduled_at"])
             except Exception as exc:
                 entry["status"] = "failed"
                 entry["result"] = f"FAIL: invalid scheduled_at — {exc}"
-                changed = True
+                save_queue(queue_path, queue)
                 continue
 
             if sched_dt <= now:
@@ -241,21 +246,39 @@ def run_daemon(queue_path: Path, run_log: Path):
                 if last_fire and (now - last_fire) < timedelta(minutes=MIN_POST_GAP_MINUTES):
                     wait_min = MIN_POST_GAP_MINUTES - int((now - last_fire).total_seconds() / 60)
                     log_event(run_log, "scheduler", "warn",
-                              f"Skipping post id={entry['id']} — inter-post gap not met. Retry in ~{wait_min}min.")
+                              f"Skipping id={entry['id']} — inter-post gap not met (~{wait_min}min remaining)")
                     continue
+                due_entries.append(entry)
 
-                print(f"[scheduler] Firing post id={entry['id']} scheduled for {entry['scheduled_at']}")
-                result = execute_post(entry, run_log)
-                entry["result"] = result
-                entry["executed_at"] = _now_iso()
-                entry["status"] = "done" if result.startswith("OK:") else "failed"
-                changed = True
-                print(f"[scheduler] Result: {result}")
-
-        if changed:
+        if due_entries:
+            # P2-4: fire due posts concurrently, up to MAX_WORKERS at a time
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+                future_to_entry = {pool.submit(execute_post, e, run_log): e for e in due_entries}
+                for future in as_completed(future_to_entry):
+                    e = future_to_entry[future]
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = f"FAIL: PUBLISH_FAILED - thread error: {exc}"
+                    e["result"] = result
+                    e["executed_at"] = _now_iso()
+                    e["status"] = "done" if result.startswith("OK:") else "failed"
+                    # P2-8: parse error_code from result line for richer logging
+                    err_code = _parse_error_code(result)
+                    log_event(run_log, "scheduler", "ok" if e["status"] == "done" else "fail",
+                              f"Post id={e['id']} result: {result}",
+                              error_code=err_code if err_code else None)
+                    print(f"[scheduler] {e['id']}: {result}")
             save_queue(queue_path, queue)
 
         time.sleep(CHECK_INTERVAL)
+
+
+def _parse_error_code(result_line: str) -> str | None:
+    """P2-8: Extract error code string from a FAIL: <CODE> - ... result line."""
+    import re as _re
+    m = _re.match(r"FAIL: ([A-Z_]+)", result_line)
+    return m.group(1) if m else None
 
 
 # ---------------------------------------------------------------------------
