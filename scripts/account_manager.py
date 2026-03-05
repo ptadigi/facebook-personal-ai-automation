@@ -20,6 +20,7 @@ Usage:
 
 from __future__ import annotations
 import json
+import os
 import sys
 import shutil
 import argparse
@@ -302,6 +303,22 @@ def cmd_remove(args):
     print(f"✅ Account '{args.id}' removed from registry")
 
 
+def _warn_if_datr_missing(cookies_path: Path):
+    """Fix 4: Warn if datr cookie is absent — missing datr is a strong bot-detection signal."""
+    try:
+        raw = json.loads(cookies_path.read_text(encoding="utf-8"))
+        cookies = raw["cookies"] if isinstance(raw, dict) else raw
+        names = {c.get("name", "") for c in cookies}
+        if "datr" not in names:
+            print("  ⚠  WARNING: 'datr' cookie not found in cookie file.")
+            print("     Facebook uses 'datr' as a device fingerprint. Missing it increases bot-detection risk.")
+            print("     Fix: Clear browser cookies, visit facebook.com, then re-export with Cookie-Editor.")
+        else:
+            print("  ✓ 'datr' cookie present ✅")
+    except Exception:
+        pass  # Non-critical check
+
+
 def cmd_init(args):
     """
     First-time init: copy cookies + generate fingerprint for an account.
@@ -324,8 +341,15 @@ def cmd_init(args):
             sys.exit(1)
         dst = acc_dir / "cookies.json"
         shutil.copy2(src, dst)
+        # Fix 3: restrict file permissions — cookies contain session tokens
+        try:
+            os.chmod(dst, 0o600)
+        except Exception:
+            pass  # Windows doesn't support full POSIX chmod — silently skip
         account["cookies_path"] = f"accounts/{args.id}/cookies.json"
         print(f"  ✓ Cookies copied to: {dst}")
+        # Fix 4: warn if datr cookie missing (high bot-detection risk)
+        _warn_if_datr_missing(dst)
 
     save_accounts(data)
 

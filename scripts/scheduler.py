@@ -40,13 +40,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +57,10 @@ DEFAULT_RUN_LOG = SKILL_ROOT / "references" / "run-log.jsonl"
 POST_SCRIPT = Path(__file__).resolve().parent / "post.py"
 
 CHECK_INTERVAL = 60   # seconds between queue checks
+# Fix 6: configurable post timeout (env override: POST_TIMEOUT_SECONDS)
+POST_TIMEOUT = int(os.environ.get("POST_TIMEOUT_SECONDS", "300"))
+# Fix 7: minimum minutes between posts per account (env override: MIN_POST_GAP_MINUTES)
+MIN_POST_GAP_MINUTES = int(os.environ.get("MIN_POST_GAP_MINUTES", "15"))
 
 
 # ---------------------------------------------------------------------------
@@ -146,13 +152,17 @@ def execute_post(entry: dict, run_log: Path) -> str:
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            # Fix 6: use configurable timeout (default 300s) to support large video uploads
+            timeout=POST_TIMEOUT,
         )
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
 
         if stderr:
-            log_event(run_log, "scheduler", "warn", f"post.py stderr: {stderr[:200]}")
+            # Fix 10: strip post text content from stderr before logging (PII protection)
+            sanitized_stderr = re.sub(r'--text [\'"].{0,200}[\'"]', '--text [REDACTED]', stderr)
+            sanitized_stderr = sanitized_stderr[:300]
+            log_event(run_log, "scheduler", "warn", f"post.py stderr: {sanitized_stderr}")
 
         # Last non-empty line is the status
         lines = [l for l in stdout.splitlines() if l.strip()]
@@ -161,13 +171,41 @@ def execute_post(entry: dict, run_log: Path) -> str:
         return status_line
 
     except subprocess.TimeoutExpired:
-        msg = "FAIL: PUBLISH_FAILED - post.py timed out after 120s"
+        msg = f"FAIL: PUBLISH_FAILED - post.py timed out after {POST_TIMEOUT}s"
         log_event(run_log, "scheduler", "fail", msg)
         return msg
     except Exception as exc:
         msg = f"FAIL: PUBLISH_FAILED - {exc}"
         log_event(run_log, "scheduler", "fail", msg)
         return msg
+
+
+def _last_fire_time(queue: list[dict], account_id: str, current_id: str) -> datetime | None:
+    """
+    Fix 7 helper: find the most recent executed_at time for any post in this account,
+    excluding the current entry. Used to enforce minimum inter-post delay.
+    """
+    last = None
+    for e in queue:
+        if e["id"] == current_id:
+            continue
+        if e.get("status") != "done":
+            continue
+        acc = e.get("account") or e.get("cookie_file", "")
+        if acc != account_id:
+            continue
+        executed_at = e.get("executed_at")
+        if not executed_at:
+            continue
+        try:
+            dt = datetime.fromisoformat(executed_at)
+            if dt.tzinfo is None:
+                dt = dt.astimezone(timezone.utc)
+            if last is None or dt > last:
+                last = dt
+        except Exception:
+            pass
+    return last
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +235,15 @@ def run_daemon(queue_path: Path, run_log: Path):
                 continue
 
             if sched_dt <= now:
+                # Fix 7: enforce minimum inter-post delay per account
+                account_id = entry.get("account") or entry.get("cookie_file", "unknown")
+                last_fire = _last_fire_time(queue, account_id, entry["id"])
+                if last_fire and (now - last_fire) < timedelta(minutes=MIN_POST_GAP_MINUTES):
+                    wait_min = MIN_POST_GAP_MINUTES - int((now - last_fire).total_seconds() / 60)
+                    log_event(run_log, "scheduler", "warn",
+                              f"Skipping post id={entry['id']} — inter-post gap not met. Retry in ~{wait_min}min.")
+                    continue
+
                 print(f"[scheduler] Firing post id={entry['id']} scheduled for {entry['scheduled_at']}")
                 result = execute_post(entry, run_log)
                 entry["result"] = result
@@ -229,6 +276,20 @@ def cmd_add(args, queue_path: Path):
         sys.exit(1)
 
     queue = load_queue(queue_path)
+
+    # Fix 8: content hash deduplication — block re-queuing same content at same time
+    content_hash = hashlib.md5(
+        f"{args.text or ''}{','.join(args.media or [])}{args.schedule}".encode()
+    ).hexdigest()[:12]
+    duplicate = next(
+        (e for e in queue if e.get("content_hash") == content_hash and e["status"] == "pending"),
+        None
+    )
+    if duplicate:
+        print(f"[scheduler] ⚠  Duplicate detected — same content already queued as id={duplicate['id']} at {duplicate['scheduled_at']}")
+        print("[scheduler] Use --cancel <id> first if you want to replace it.")
+        sys.exit(0)
+
     entry = {
         "id": str(uuid.uuid4())[:8],
         "status": "pending",
@@ -237,12 +298,13 @@ def cmd_add(args, queue_path: Path):
         "media": args.media or [],
         "link": args.link or None,
         "cookie_file": args.cookie_file,
+        "content_hash": content_hash,
         "created_at": _now_iso(),
         "result": None,
     }
     queue.append(entry)
     save_queue(queue_path, queue)
-    print(f"[scheduler] Queued post id={entry['id']} for {args.schedule}")
+    print(f"[scheduler] Queued post id={entry['id']} for {args.schedule} (hash={content_hash})")
     print(f"  Text: {entry['text'][:80]}")
     print(f"  Media: {entry['media']}")
 

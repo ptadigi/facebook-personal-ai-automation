@@ -222,7 +222,8 @@ def main():
         if primary:
             print(f"    ✓ primary: {primary}")
             # Open the composer for subsequent probes
-            if action.startswith("//"):
+            # Fix: check primary (the selector string), not action (the key name)
+            if primary.startswith("//"):
                 page.locator(f"xpath={primary}").first.click()
             else:
                 page.locator(primary).first.click()

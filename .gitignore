@@ -15,6 +15,7 @@ test_result_*.webp
 
 # Run logs (generated at runtime)
 references/run-log.jsonl
+references/schedule-queue.json
 proxies/proxy-usage.jsonl
 references/selector-map.history.jsonl
 

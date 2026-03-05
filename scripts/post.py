@@ -604,8 +604,9 @@ def update_account_stats(account_id: str, post_url: str | None = None):
                 break
         data["updated_at"] = _now_iso()
         accounts_file.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    except Exception:
-        pass  # Non-fatal
+    except Exception as exc:
+        # Fix 5: don't silently swallow write failures — warn so operators can investigate
+        log_event(run_log, "stats", "warn", f"Failed to update account stats: {exc}")
 
 
 # ---------------------------------------------------------------------------
