@@ -1,43 +1,43 @@
 # Multi-Agent Usage Guide
 **Skill:** `facebook-personal-ai-automation` · **Version:** 2.1.0
 
-Tài liệu này giải thích khi nào dùng agent nào, cách orchestrate nhiều agent, và best practice cho multi-agent setup.
+Tài liu này giải thích khi nào dùng agent nào, cách orchestrate nhiều agent, và best practice cho multi-agent setup.
 
 ---
 
-## Decision Matrix — Dùng Agent Nào?
+## Decision Matrix  Dùng Agent Nào?
 
 | Tiêu chí | Clawbot | Claude Code | Antigravity |
 |---|---|---|---|
 | **User interaction** | Chat-driven (VN/EN triggers) | Code-assisted, command-level | Autonomous agent in terminal |
-| **Khi nào dùng** | Users đăng bài qua chat | Dev điều khiển bằng script/code | Batch automation từ agent pipeline |
-| **Ngôn ngữ trigger** | Tiếng Việt + Tiếng Anh tự nhiên | Shell commands + code | run_command() Python |
+| **Khi nào dùng** | Users ng bài qua chat | Dev iều khin bằng script/code | Batch automation từ agent pipeline |
+| **Ngôn ngữ trigger** | Tiếng Vit + Tiếng Anh tự nhiên | Shell commands + code | run_command() Python |
 | **Validation** | Built-in pre-command check | Code-level validation | Validate function + SKILL.md |
-| **DOM self-heal** | Tự động gọi dom_learner | Manual hoặc tự gọi | Tự động trong error handler |
+| **DOM self-heal** | Tự ng gọi dom_learner | Manual hoặc tự gọi | Tự ng trong error handler |
 | **Scheduling** | Queue qua scheduler.py | Direct CLI | Orchestrate scheduler daemon |
 | **Output parsing** | Đọc last stdout line | Parse output contract | parse_output() helper |
 | **Logging** | run-log.jsonl | run-log.jsonl | run-log.jsonl |
-| **Phù hợp nhất với** | Marketing team, non-dev users | Developers, CI integration | Autonomous pipeline, cron jobs |
+| **Phù hợp nhất vi** | Marketing team, non-dev users | Developers, CI integration | Autonomous pipeline, cron jobs |
 
 ---
 
-## Khi Nào Dùng Agent Nào — Quick Guide
+## Khi Nào Dùng Agent Nào  Quick Guide
 
 ```
-User nhắn "đăng bài" trong app chat
-  → Clawbot
+User nhắn "ng bài" trong app chat
+   Clawbot
 
 Dev cần gọi posting từ script Python/Bash
-  → Claude Code với bash_tool
+   Claude Code vi bash_tool
 
-Cần chạy batch posting 10 accounts tự động không có người can thiệp
-  → Antigravity với scheduler daemon
+Cần chạy batch posting 10 accounts tự ng không có người can thip
+   Antigravity vi scheduler daemon
 
-Cần debug khi Facebook đổi UI
-  → Bất kỳ agent nào + dom_learner.py
+Cần debug khi Facebook i UI
+   Bất kỳ agent nào + dom_learner.py
 
-Cần schedule bài hàng ngày theo lịch cố định
-  → scheduler daemon + Antigravity hoặc cron
+Cần schedule bài hàng ngày theo lch c nh
+   scheduler daemon + Antigravity hoặc cron
 ```
 
 ---
@@ -45,37 +45,37 @@ Cần schedule bài hàng ngày theo lịch cố định
 ## Architecture Overview
 
 ```
-                        ┌─────────────────────────────────┐
-                        │         User / Operator          │
-                        └──────┬──────────┬───────┬────────┘
-                               │          │       │
-                    Chat UI    │     CLI  │  Code │  Agent Pipeline
-                               ▼          ▼       ▼
-              ┌─────────────────┐  ┌──────────┐  ┌─────────────┐
-              │    Clawbot      │  │  Claude  │  │ Antigravity │
-              │  (chat intent   │  │   Code   │  │ (autonomous) │
-              │   resolution)   │  │ (bash)   │  │ (run_command)|
-              └────────┬────────┘  └────┬─────┘  └──────┬──────┘
-                       │               │                │
-                       └───────────────┴────────────────┘
-                                       │
-                          ┌────────────▼────────────┐
-                          │   Output Contract        │
-                          │   OK: published | url:   │
-                          │   OK: scheduled          │
-                          │   WAIT_APPROVAL          │
-                          │   FAIL: <CODE> - reason  │
-                          └────────────┬────────────┘
-                                       │
-                    ┌──────────────────┼──────────────────┐
-                    ▼                  ▼                   ▼
-             ┌────────────┐   ┌──────────────┐   ┌──────────────┐
-             │  post.py   │   │ test_story.py│   │ test_reel.py │
-             │ scheduler  │   │              │   │              │
-             └────────────┘   └──────────────┘   └──────────────┘
-                    │
-         ┌──────────┼──────────┐
-         ▼          ▼          ▼
+                        
+                                 User / Operator          
+                        
+                                                
+                    Chat UI         CLI    Code   Agent Pipeline
+                                                
+                  
+                  Clawbot          Claude     Antigravity 
+                (chat intent        Code      (autonomous) 
+                 resolution)      (bash)      (run_command)|
+                  
+                                                      
+                       
+                                       
+                          
+                             Output Contract        
+                             OK: published | url:   
+                             OK: scheduled          
+                             WAIT_APPROVAL          
+                             FAIL: <CODE> - reason  
+                          
+                                       
+                    
+                                                         
+                   
+               post.py       test_story.py    test_reel.py 
+              scheduler                                    
+                   
+                    
+         
+                             
    accounts.json  proxies  selector-map.json
 ```
 
@@ -83,7 +83,7 @@ Cần schedule bài hàng ngày theo lịch cố định
 
 ## Shared Output Contract (All Agents)
 
-Mọi agent **BẮT BUỘC** phải parse dòng cuối cùng của stdout:
+Mọi agent **BẮT BUC** phải parse dòng cui cùng của stdout:
 
 ```
 OK: published | url: https://www.facebook.com/<user>/posts/<id> | account: <id>
@@ -95,21 +95,21 @@ FAIL: RATE_LIMIT - <reason>
 FAIL: PUBLISH_FAILED - <reason>
 ```
 
-**Rule:** Không thay đổi contract này. Backward compatible với mọi agent version.
+**Rule:** Không thay i contract này. Backward compatible vi mọi agent version.
 
 ---
 
 ## Multi-Agent Orchestration Patterns
 
-### Pattern 1: Chat-to-Automation (Clawbot điều phối Antigravity)
+### Pattern 1: Chat-to-Automation (Clawbot iều phi Antigravity)
 
 ```
 Clawbot nhận intent từ user
-  → Validate input (account, media, schedule)
-  → Gọi subprocess: python scripts/post.py
-  → Parse output contract
-  → Handle errors (DOM_CHANGED: chạy dom_learner → retry)
-  → Return result to user
+   Validate input (account, media, schedule)
+   Gọi subprocess: python scripts/post.py
+   Parse output contract
+   Handle errors (DOM_CHANGED: chạy dom_learner  retry)
+   Return result to user
 ```
 
 ### Pattern 2: Batch Scheduling (Antigravity + Scheduler Daemon)
@@ -172,29 +172,29 @@ All agents follow the same error decision tree:
 
 ```
 FAIL: AUTH_REQUIRED
-  → ALWAYS escalate to human (needs new cookies)
-  → NEVER auto-retry
+   ALWAYS escalate to human (needs new cookies)
+   NEVER auto-retry
 
 FAIL: DOM_CHANGED
-  → TRY: run dom_learner.py
-  → IF dom_learner OK: retry once
-  → IF dom_learner fails OR second DOM_CHANGED: escalate
+   TRY: run dom_learner.py
+   IF dom_learner OK: retry once
+   IF dom_learner fails OR second DOM_CHANGED: escalate
 
 FAIL: RATE_LIMIT
-  → AUTO: queue retry +45 minutes via scheduler
-  → IF 3+ in same day for same account: escalate
+   AUTO: queue retry +45 minutes via scheduler
+   IF 3+ in same day for same account: escalate
 
 FAIL: PUBLISH_FAILED
-  → WAIT: 10 seconds
-  → AUTO: retry once
-  → IF still fails: escalate with screenshot info
+   WAIT: 10 seconds
+   AUTO: retry once
+   IF still fails: escalate with screenshot info
 ```
 
 ---
 
 ## Log Correlation (Multi-agent tracing)
 
-Mỗi invocation của post.py tạo một `run_id` 8 ký tự để correlate logs:
+Mi invocation của post.py tạo mt `run_id` 8 ký tự  correlate logs:
 
 ```bash
 # Filter logs by account
@@ -251,3 +251,12 @@ WHEN FB DOES UI UPDATE:
 [ ] Verify: selector-map.json updated (check "updated_at" timestamp)
 [ ] Re-test: post.py --account X --text "test" --dry-run
 ```
+
+
+
+## Known Limitations
+- Video posts may return 'URL not captured' even when publish succeeds; verify on profile feed.
+- Reel permalink can lag 1-5 minutes after publish while Facebook processes media.
+- RATE_LIMIT events may require cooldown and scheduled retry.
+- DOM changes can temporarily break selectors until dom_learner/manual update is applied.
+
