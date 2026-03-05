@@ -1,311 +1,297 @@
 <div align="center">
 
-# 🤖 fb-autoposter
+# 🤖 Facebook Personal AI Automation
 
-**Tự động đăng bài Facebook cá nhân qua browser — không cần API, không cần token.**
+**Tự động đăng bài Facebook cá nhân bằng Playwright — không cần API, không cần app review.**
 
-Viết bằng Python + Playwright. Chạy được trên máy local, VPS, hay bất kỳ đâu có Chrome.
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![CI](https://github.com/ptadigi/facebook-personal-ai-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/ptadigi/facebook-personal-ai-automation/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/ptadigi/facebook-personal-ai-automation)](https://github.com/ptadigi/facebook-personal-ai-automation/commits/main)
+[![Tests](https://img.shields.io/badge/tests-48%20passing-brightgreen)](tests/)
 
-[![Tests](https://github.com/ptadigi/facebook-personal-ai-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/ptadigi/facebook-personal-ai-automation/actions)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
-[![Playwright](https://img.shields.io/badge/playwright-chromium-45BA4B?style=flat&logo=playwright&logoColor=white)](https://playwright.dev)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat)](LICENSE)
+*Multi-account · Proxy support · Browser fingerprint spoofing · AI agent integration (Clawbot / Claude / Antigravity)*
 
 </div>
 
 ---
 
-## Tại sao có tool này?
+## ✨ What It Does
 
-Facebook không có API công khai cho personal profile. Mọi công cụ đăng bài đều dùng Page API (cần business account) hoặc dùng browser automation. Cái này thuộc loại thứ hai — nó điều khiển Chromium như một người thật, bao gồm fingerprint, proxy, session persistence, và một cơ chế tự học lại selector khi Facebook đổi UI.
+Repo này cho phép bạn tự động đăng bài lên Facebook cá nhân bằng Playwright — giống như một người thật đang dùng trình duyệt Chrome. Không cần Facebook API, không cần app review, không cần page.
 
-Mục đích: nghiên cứu và sử dụng cá nhân.
+```
+Bạn viết lệnh  →  Script mở Chrome headless  →  Đăng bài lên Facebook profile  →  Trả về URL bài đăng
+```
 
----
-
-## Tính năng
-
-- **Feed post** — text, ảnh đơn, nhiều ảnh (max 4), video
-- **Story** — ảnh hoặc video 24h
-- **Reel** — short video
-- **Multi-account** — mỗi account có cookies riêng, fingerprint riêng, proxy riêng
-- **Browser fingerprint spoofing** — UA, viewport, WebGL, Canvas, AudioContext
-- **Proxy** — HTTP/HTTPS/SOCKS5, health check, auto-rotate khi lỗi
-- **Scheduler** — đặt lịch đăng theo ISO 8601 + timezone, daemon chạy nền
-- **DOM self-healing** — `dom_learner.py` tự học lại selector khi FB đổi giao diện
-- **Output contract** — stdout luôn là `OK:` / `WAIT_APPROVAL` / `FAIL:` — dễ parse từ script khác
+**Hỗ trợ:**
+- 📝 Bài viết (text + ảnh + video)
+- 📸 Story (ảnh/video 24h)
+- 🎬 Reel (short video)
+- ⏰ Lên lịch đăng (`--schedule`)
+- 👥 Nhiều tài khoản đồng thời
+- 🌐 Proxy rotation
+- 🤖 Tích hợp AI agent (Clawbot, Claude Code, Antigravity)
 
 ---
 
-## Cài đặt
+## 🎯 Who Is This For?
+
+| Đối tượng | Use case |
+|---|---|
+| **Content creator / Influencer** | Lên lịch bài viết hàng tuần, đăng nhiều tài khoản cùng lúc |
+| **Marketing team** | Batch scheduling, theo dõi post URL, kiểm tra rate limit |
+| **Developer / AI engineer** | Tích hợp với AI agent pipeline, automation workflow |
+| **Indie hacker** | Build micro-tool, SaaS nội bộ, cron job posting |
+
+> ⚠️ **Chỉ dành cho tài khoản cá nhân của chính bạn.** Xem [Responsible Use](#-responsible-use--security).
+
+---
+
+## ⚡ Quickstart (5 phút)
 
 ```bash
-git clone https://github.com/ptadigi/facebook-personal-ai-automation
+# 1. Clone repo
+git clone https://github.com/ptadigi/facebook-personal-ai-automation.git
 cd facebook-personal-ai-automation
 
+# 2. Cài đặt
 pip install -r requirements.txt
 playwright install chromium
+
+# 3. Import cookies Facebook của bạn
+#    (Dùng extension Cookie-Editor → Export → JSON)
+python scripts/account_manager.py init \
+  --id my_account \
+  --cookies /path/to/my_cookies.json
+
+# 4. Kiểm tra session
+python scripts/account_manager.py test --id my_account
+# Output: ✅ Account 'my_account' session is ACTIVE
+
+# 5. Đăng bài đầu tiên
+python scripts/post.py \
+  --account my_account \
+  --text "Chào mọi người từ AI automation! 🚀" \
+  --auto-approve
+# Output: OK: published | url: https://www.facebook.com/.../posts/... | account: my_account
 ```
 
-Hoặc dùng Makefile:
-
+**Hoặc dùng Make:**
 ```bash
-make install
+make install       # pip install + playwright install
+make test          # chạy 48 unit tests
+make dom-learn     # học lại Facebook selectors
 ```
 
 ---
 
-## Dùng nhanh
+## 📤 Output Contract
 
-### Bước 1 — Lấy cookie
-
-1. Cài extension [Cookie-Editor](https://cookie-editor.com/) trên Chrome
-2. Đăng nhập Facebook
-3. Click Cookie-Editor → **Export** → **Export as JSON** → lưu thành `cookies.json`
-
-### Bước 2 — Khởi tạo account
-
-```bash
-python scripts/account_manager.py init --id myaccount --cookies cookies.json
-# → copy cookies, tạo fingerprint, kiểm tra datr
-
-python scripts/account_manager.py test --id myaccount
-# → ✅ Account 'myaccount' session is ACTIVE
-```
-
-### Bước 3 — Đăng!
-
-```bash
-# Text
-python scripts/post.py --account myaccount --text "Hôm nay mưa quá" --auto-approve
-
-# Ảnh
-python scripts/post.py --account myaccount --text "Check-in" --media photo.jpg --auto-approve
-
-# Video
-python scripts/post.py --account myaccount --media clip.mp4 --auto-approve
-
-# Story
-python scripts/test_story.py --cookie-file accounts/myaccount/cookies.json --media photo.jpg
-
-# Reel
-python scripts/test_reel.py --cookie-file accounts/myaccount/cookies.json --media video.mp4
-
-# Đặt lịch (10h sáng mai)
-python scripts/post.py --account myaccount --text "Good morning!" \
-  --schedule "2026-03-06T10:00:00+07:00" --auto-approve
-```
-
-Output mẫu:
+Mọi command đều trả về **dòng cuối cùng stdout** theo format cố định:
 
 ```
-OK: published | url: https://www.facebook.com/pham.thanh.756452/posts/pfbid0... | account: myaccount
-```
-
----
-
-## Output contract
-
-Mọi script đều in đúng một trong ba dạng ra stdout:
-
-```
-OK: published | url: https://...
+OK: published | url: https://www.facebook.com/<user>/posts/<id> | account: <id>
 OK: scheduled 2026-03-06T10:00:00+07:00
 WAIT_APPROVAL
-FAIL: AUTH_REQUIRED - Session expired
-FAIL: DOM_CHANGED - All selectors failed — run dom_learner.py
-FAIL: RATE_LIMIT - Facebook rate limit detected
-FAIL: PUBLISH_FAILED - Retry exhausted
+FAIL: AUTH_REQUIRED - <reason>
+FAIL: DOM_CHANGED - <reason>
+FAIL: RATE_LIMIT - <reason>
+FAIL: PUBLISH_FAILED - <reason>
 ```
 
-Thiết kế này cho phép gọi từ shell script, AI agent, hay bất kỳ orchestrator nào mà không cần parse HTML hay log.
+> Contract này **không bao giờ thay đổi** — backward compatible với mọi agent version.
 
 ---
 
-## Cấu trúc project
+## 🏗️ Architecture
 
-```
-├── scripts/
-│   ├── post.py                # Main — đăng feed post
-│   ├── test_story.py          # Đăng story
-│   ├── test_reel.py           # Đăng reel
-│   ├── account_manager.py     # Quản lý accounts
-│   ├── proxy_manager.py       # Quản lý proxies
-│   ├── fingerprint_gen.py     # Tạo/quản lý fingerprint
-│   ├── dom_learner.py         # Tự học lại FB selectors
-│   ├── scheduler.py           # Daemon schedule
-│   └── lib/
-│       └── cookies.py         # Shared cookie utilities
-├── scripts/tests/             # Dùng test_all_formats.py để test thủ công
-├── tests/                     # Pytest unit tests (48 tests, chạy offline)
-├── accounts/                  # accounts.json + per-account cookies & fingerprint
-├── proxies/                   # proxy-list.json
-├── references/
-│   ├── selector-map.json      # Facebook DOM selectors
-│   └── run-log.jsonl          # Structured run history (JSONL)
-├── skills/                    # AI agent integration (Clawbot, Claude, OpenAI)
-├── docs/
-│   ├── security-audit.md      # Audit findings & remediation roadmap
-│   └── clawbot-acceptance-tests.md
-├── Makefile
-├── pytest.ini
-└── requirements.txt
+```mermaid
+graph TD
+    U[User / Agent] --> CB[Clawbot<br/>Chat triggers VN+EN]
+    U --> CC[Claude Code<br/>bash_tool + MCP]
+    U --> AG[Antigravity<br/>run_command autonomous]
+
+    CB --> OC[Output Contract<br/>OK / WAIT / FAIL]
+    CC --> OC
+    AG --> OC
+
+    OC --> P[scripts/post.py]
+    OC --> S[scripts/scheduler.py]
+    OC --> ST[scripts/test_story.py]
+    OC --> R[scripts/test_reel.py]
+
+    P --> AM[accounts/accounts.json]
+    P --> PM[proxies/proxy-list.json]
+    P --> SM[references/selector-map.json]
+    P --> LOG[references/run-log.jsonl]
+
+    style OC fill:#f0f4ff,stroke:#6366f1,stroke-width:2px
+    style P fill:#ddf4dd,stroke:#16a34a
+    style LOG fill:#fff7ed,stroke:#ea580c
 ```
 
 ---
 
-## Multi-account + Proxy
+## 📦 Features
 
-```bash
-# Thêm proxy
-python scripts/proxy_manager.py add \
-  --host 103.x.x.x --port 3128 --user user --pass pass --country VN
-
-# Gán proxy cho account
-python scripts/account_manager.py assign --id myaccount --proxy proxy_103_x_x_x_3128
-
-# Từ lúc này post.py tự load proxy + fingerprint cho account đó
-python scripts/post.py --account myaccount --text "Hello!" --auto-approve
-```
-
-Proxy policy nằm ở `references/rotation-rules.json`:
-
-```json
-{
-  "strategy": "sticky_per_account",
-  "rotate_on_fail": true,
-  "fail_threshold": 2,
-  "cooldown_minutes": 30,
-  "prefer_same_country": true
-}
-```
-
----
-
-## Browser fingerprint
-
-Mỗi account có fingerprint stable, deterministic từ account ID:
-
-| Property | Method |
+| Feature | Status |
 |---|---|
-| User-Agent | Real Chrome/Edge UA, không có "HeadlessChrome" |
-| Viewport | Random realistic (1366×768, 1920×1080...) |
-| `navigator.webdriver` | Patch về `undefined` |
-| WebGL vendor/renderer | Inject GPU strings thật |
-| Canvas | Per-account pixel noise |
-| AudioContext | Per-account buffer noise |
-| Locale + Timezone | Mapped theo proxy country |
-
-Để tạo/xem fingerprint:
-
-```bash
-python scripts/fingerprint_gen.py generate --account myaccount
-python scripts/fingerprint_gen.py show --account myaccount
-```
+| Feed post (text / ảnh / video) | ✅ Production ready |
+| Story post | ✅ Production ready |
+| Reel post | ✅ Production ready |
+| Scheduled posting (`--schedule`) | ✅ Production ready |
+| Multi-account support | ✅ Production ready |
+| Proxy rotation | ✅ Production ready |
+| Browser fingerprint spoofing | ✅ Production ready |
+| DOM self-healing (`dom_learner.py`) | ✅ Production ready |
+| AI agent integration (3 agents) | ✅ Documented |
+| Concurrent posting (ThreadPoolExecutor) | ✅ Production ready |
+| Structured logging (JSONL) | ✅ Production ready |
+| 48 unit tests + GitHub Actions CI | ✅ Active |
 
 ---
 
-## Khi nào dùng dom_learner?
+## 📖 Documentation
 
-Facebook thỉnh thoảng đổi UI. Khi đó post.py sẽ ra `FAIL: DOM_CHANGED`. Chạy:
-
-```bash
-python scripts/dom_learner.py --cookie-file accounts/myaccount/cookies.json --account myaccount
-```
-
-Script sẽ tự probe lại các selectors và cập nhật `references/selector-map.json`. Sau đó thử lại là được.
-
----
-
-## Tests
-
-```bash
-# Chạy 48 unit tests (không cần browser, không cần internet)
-make test
-
-# Hoặc trực tiếp
-pytest tests/ -v
-```
-
-Coverage: `lib/cookies`, `scheduler`, `account_manager`, `post`.
-
----
-
-## Scheduler daemon
-
-```bash
-# Đặt lịch
-python scripts/scheduler.py --cookie-file accounts/myaccount/cookies.json \
-  --add --text "Bài buổi sáng" --schedule "2026-03-06T08:00:00+07:00"
-
-# Xem queue
-python scripts/scheduler.py --list
-
-# Chạy daemon (kiểm tra mỗi 60s, tối đa 3 post song song)
-python scripts/scheduler.py --daemon
-```
-
-Cấu hình qua env:
-
-```bash
-POST_TIMEOUT_SECONDS=300   # timeout mỗi post (default: 300s)
-MIN_POST_GAP_MINUTES=15    # khoảng cách tối thiểu giữa 2 post cùng account (default: 15)
-SCHEDULER_MAX_WORKERS=3    # số post song song (default: 3)
-```
-
----
-
-## AI Agent Integration
-
-Folder `skills/` chứa định nghĩa skill cho các AI agent:
-
-| File | Dùng cho |
+| Tài liệu | Mô tả |
 |---|---|
-| `skills/clawbot-skill.md` | Clawbot (VN + EN triggers, error runbooks) |
-| `skills/claude-skill.md` | Claude (MCP tool definition) |
-| `skills/openai-function.json` | OpenAI function calling |
-| `SKILL.md` | Antigravity |
+| [docs/INDEX.md](docs/INDEX.md) | 📚 Central documentation map |
+| [docs/USAGE_MULTI_AGENT.md](docs/USAGE_MULTI_AGENT.md) | Multi-agent setup guide |
+| [docs/agent-guides/clawbot.md](docs/agent-guides/clawbot.md) | Clawbot integration |
+| [docs/agent-guides/claude-code.md](docs/agent-guides/claude-code.md) | Claude Code integration |
+| [docs/agent-guides/antigravity.md](docs/agent-guides/antigravity.md) | Antigravity integration |
+| [docs/acceptance-tests/multi-agent-uat.md](docs/acceptance-tests/multi-agent-uat.md) | 26 UAT test cases |
+| [docs/security-audit.md](docs/security-audit.md) | Full security audit (20 findings) |
+| [docs/ROADMAP_NEXT_FEATURES.md](docs/ROADMAP_NEXT_FEATURES.md) | 15 planned features |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 
 ---
 
-## Error codes
+## 🔐 Responsible Use & Security
 
-| Code | Nguyên nhân | Fix |
+> **Đây là công cụ dành cho cá nhân, dùng với tài khoản của chính bạn.**
+
+- ✅ Phù hợp: cá nhân muốn tự động hóa việc quản lý Facebook profile của họ
+- ❌ Không phù hợp: spam, mạo danh, đăng nội dung vi phạm, commercial mass posting
+- ⚠️ Sử dụng công cụ này có thể vi phạm [Facebook Terms of Service](https://www.facebook.com/terms). Người dùng chịu hoàn toàn trách nhiệm.
+
+**Các biện pháp bảo mật tích hợp:**
+- Cookie files có quyền `0o600` (chỉ owner đọc được)
+- Sensitive data không được log
+- `datr` cookie validation
+- Browser fingerprint spoofing để giảm bot detection
+
+Xem thêm: [SECURITY.md](SECURITY.md) và [docs/security-audit.md](docs/security-audit.md)
+
+---
+
+## 🚀 Roadmap Preview
+
+**Quick Wins (đang lên kế hoạch):**
+- [ ] F01: Adaptive rate-limit backoff (exponential + jitter)
+- [ ] F02: Per-account log isolation
+- [ ] F03: Proxy credential encryption (OS keyring)
+- [ ] F04: DOM change alert webhook
+- [ ] F05: `config.json` actually loaded and working
+
+**Mid-term:**
+- [ ] F06: HTTP health endpoint cho scheduler daemon
+- [ ] F07: Scroll + mouse movement simulation
+- [ ] F08: Multi-agent result aggregation dashboard
+
+Xem chi tiết: [docs/ROADMAP_NEXT_FEATURES.md](docs/ROADMAP_NEXT_FEATURES.md)
+
+---
+
+## 🏢 Commercial Readiness
+
+### Supported Use Cases
+| Scenario | Supported | Notes |
 |---|---|---|
-| `AUTH_REQUIRED` | Cookie hết hạn | Export lại cookies, chạy `account_manager.py init` |
-| `DOM_CHANGED` | FB đổi UI | Chạy `dom_learner.py` |
-| `RATE_LIMIT` | FB giới hạn tốc độ | Chờ 45 phút, scheduler tự retry |
-| `PUBLISH_FAILED` | Không confirm được publish | Xem screenshot trong thư mục gốc |
+| Single-account personal posting | ✅ Yes | Full support |
+| Multi-account scheduling (≤10 accounts) | ✅ Yes | ThreadPoolExecutor |
+| AI agent-driven automation (3 agents) | ✅ Yes | Full integration docs |
+| High-volume commercial posting (100+ accounts) | ⚠️ Not tested | Scale implications unclear |
+| Enterprise SaaS deployment | ❌ Not recommended | See limitations |
+
+### Known Limitations
+- **Video URL capture:** May show `"URL not captured"` even when publish succeeds — verify on profile feed
+- **Reel permalink:** Lag 1–5 minutes after publish while Facebook processes media
+- **Facebook UI changes:** May break selectors temporarily until `dom_learner.py` re-runs
+- **Session management:** No automatic cookie refresh — requires manual export on expiry
+- **Rate limits:** Aggressive scheduling (>4 posts/day/account) risks account flag
+
+### SLA Suggestion (Self-hosted)
+- **Availability target:** Best-effort (no SLA for personal use)
+- **Recovery from DOM_CHANGED:** < 5 minutes with `dom_learner.py`
+- **Recovery from AUTH_REQUIRED:** Manual intervention required (cookie export)
+
+### Compliance Note
+> Use of this tool may violate Facebook's Automated Data Collection Terms. Users are solely responsible for compliance with platform policies, local regulations, and applicable laws.
 
 ---
 
-## Giới hạn & Rủi ro
+## ❓ FAQ
 
-Tool này mô phỏng hành vi trình duyệt nên vẫn có thể bị phát hiện. Các yếu tố rủi ro cao nhất:
+**Q: Có cần Facebook API không?**
+> Không. Tool dùng Playwright để điều khiển browser như người thật dùng Chrome.
 
-- IP datacenter (dùng residential proxy thay thế)
-- Đăng quá nhiều trong thời gian ngắn (`daily_post_limit` trong `accounts.json`)
-- Nội dung trùng lặp giữa các lần đăng
-- Account mới (< 3 tháng tuổi) + automation
+**Q: Cookies lưu ở đâu, có an toàn không?**
+> Cookies lưu trong `accounts/<id>/cookies.json` với quyền `0o600`. Không bao giờ commit lên Git (đã có `.gitignore`).
 
-Xem đầy đủ trong [`docs/security-audit.md`](docs/security-audit.md).
+**Q: Tài khoản có bị khóa không?**
+> Có rủi ro. Tool cố gắng giả lập hành vi người dùng thật (fingerprint, delay, proxy), nhưng không đảm bảo 100%. Hãy bắt đầu với 1-2 bài/ngày, tăng dần.
+
+**Q: Làm sao biết bài đã đăng thành công?**
+> Stdout trả về `OK: published | url: https://...` với URL bài viết. URL này được log vào `references/run-log.jsonl`.
+
+**Q: Facebook đổi UI thì sao?**
+> Chạy `python scripts/dom_learner.py --account <id> --cookie-file accounts/<id>/cookies.json` để học lại selectors. Thường xong trong 1-2 phút.
+
+**Q: Hỗ trợ những AI agent nào?**
+> Clawbot, Claude Code, và Antigravity. Xem [docs/USAGE_MULTI_AGENT.md](docs/USAGE_MULTI_AGENT.md) để biết cách chọn agent phù hợp.
 
 ---
 
-## Makefile shortcuts
+## 🛠️ Development
 
 ```bash
-make install       # pip + playwright install
-make test          # pytest tests/
-make lint          # ruff check
-make dom-learn     # tự học lại selectors
-make list-accounts # xem danh sách accounts
-make check-proxy   # kiểm tra proxy
-make daemon        # chạy scheduler
+make install     # Install dependencies
+make test        # Run 48 unit tests
+make test-cov    # Test with coverage report
+make lint        # Run ruff linter
+make lint-fix    # Auto-fix lint issues
+make dom-learn   # Re-learn Facebook selectors
 ```
+
+**Tech stack:** Python 3.11+ · Playwright 1.42 · pytz · pytest · ruff · GitHub Actions
 
 ---
 
-## License
+## 🤝 Contributing
 
-MIT — dùng cho nghiên cứu và mục đích cá nhân. Không sử dụng để spam, scam, hay vi phạm Terms of Service của Facebook.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- Coding standards
+- How to submit bug reports and feature requests
+- Pull request process
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+> **Disclaimer:** This tool is provided as-is for personal use and educational purposes. The authors are not responsible for any consequences of its use, including but not limited to account suspension, data loss, or violation of platform terms of service.
+
+---
+
+<div align="center">
+
+Made with ❤️ for the Vietnamese developer community
+
+[⭐ Star this repo](https://github.com/ptadigi/facebook-personal-ai-automation) · [🐛 Report Bug](https://github.com/ptadigi/facebook-personal-ai-automation/issues/new?template=bug_report.md) · [💡 Request Feature](https://github.com/ptadigi/facebook-personal-ai-automation/issues/new?template=feature_request.md)
+
+</div>
