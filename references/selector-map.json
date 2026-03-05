@@ -1,17 +1,13 @@
 {
-  "version": "1.1.0",
-  "updated_at": "2026-03-05T09:40:00+07:00",
+  "version": "1.1.3",
+  "updated_at": "2026-03-05T22:44:26+07:00",
   "note": "Selectors are tried in order: primary first, then fallbacks[0], [1], [2]. If all fail, DOM_CHANGED is raised.",
   "selectors": {
     "open_composer": {
       "description": "The 'What's on your mind?' clickable area that opens the post composer",
-      "primary": "[aria-label=\"What's on your mind?\"]",
-      "fallbacks": [
-        "[data-testid='status-attachment-mentions-input']",
-        "div[role='button']:has-text(\"What's on your mind\")",
-        "//div[@role='button'][contains(., \"What's on your mind\")]"
-      ],
-      "last_verified": "2026-03-05T08:41:00+07:00"
+      "primary": "div[role='button']:has-text(\"Bạn đang nghĩ gì\")",
+      "fallbacks": [],
+      "last_verified": "2026-03-05T22:44:26+07:00"
     },
     "text_input": {
       "description": "The contenteditable richtext area inside the composer where post text is typed",
@@ -25,14 +21,12 @@
     },
     "media_button": {
       "description": "Photo/video attachment button in the composer toolbar",
-      "primary": "[aria-label='Photo/video']",
+      "primary": "[aria-label='Ảnh/video']",
       "fallbacks": [
-        "[aria-label='Photo']",
-        "[data-testid='photo-video-button']",
-        "div[role='button'][aria-label*='Photo']",
-        "//div[@role='button'][contains(@aria-label,'Photo')]"
+        "div[role='button'][aria-label*='Ảnh']",
+        "//div[@role='button'][contains(@aria-label,'Ảnh')]"
       ],
-      "last_verified": "2026-03-05T08:41:00+07:00"
+      "last_verified": "2026-03-05T22:44:26+07:00"
     },
     "file_input": {
       "description": "Hidden file input element triggered after clicking media button",
@@ -57,13 +51,12 @@
     },
     "publish_button": {
       "description": "The final blue 'Post' button that submits the post",
-      "primary": "div[aria-label='Post'][role='button']",
+      "primary": "div[aria-label='Đăng'][role='button']",
       "fallbacks": [
-        "[data-testid='react-composer-post-button']",
-        "div[role='button']:has-text('Post')",
-        "//div[@role='button'][@aria-label='Post']"
+        "div[role='button']:has-text('Đăng')",
+        "//div[@role='button'][@aria-label='Đăng']"
       ],
-      "last_verified": "2026-03-05T08:41:00+07:00"
+      "last_verified": "2026-03-05T22:44:26+07:00"
     },
     "schedule_confirm": {
       "description": "Confirm/Save button inside the scheduling dialog",
@@ -143,17 +136,5 @@
       ],
       "last_verified": "2026-03-05T10:44:00+07:00"
     }
-  },
-  "reel_flow": {
-    "url": "https://www.facebook.com/<username>/reels/",
-    "steps": [
-      "1. Click reel_create_button",
-      "2. set_input_files on reel_file_input",
-      "3. Wait 30s for video to process",
-      "4. Click reel_next_button (Chinh sua -> Tiep)",
-      "5. Click reel_next_button again (Cai dat -> Tiep)",
-      "6. Click reel_publish_button (Dang)",
-      "7. Wait for toast: Thuoc phim dang duoc xu ly"
-    ]
   }
 }

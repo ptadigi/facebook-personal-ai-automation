@@ -134,7 +134,9 @@ def try_selector(page, action: str, selectors: dict, timeout: int = 5000):
                 loc = page.locator(f"xpath={sel}")
             else:
                 loc = page.locator(sel)
-            loc.first.wait_for(state="visible", timeout=timeout)
+            
+            wait_state = "attached" if action == "file_input" else "visible"
+            loc.first.wait_for(state=wait_state, timeout=timeout)
             return loc.first, sel
         except Exception:
             continue
@@ -236,19 +238,19 @@ def attach_media(page, media_paths: list[str], selectors: dict, timeout: int, ru
     # Click the media button to reveal the file input
     try:
         btn, sel = try_selector(page, "media_button", selectors, timeout)
-        btn.click()
+        btn.click(timeout=8000)
         page.wait_for_timeout(1000)
         log_event(run_log, "compose", "ok", f"Media button clicked via: {sel}")
-    except RuntimeError:
-        raise  # DOM_CHANGED
+    except Exception as exc:
+        raise RuntimeError(f"{DOM_CHANGED} - media_button failed: {exc}")
 
     # Use file_input selector to upload
     try:
         inp, sel = try_selector(page, "file_input", selectors, timeout)
-        inp.set_input_files(media_paths)
+        inp.set_input_files(media_paths, timeout=8000)
         log_event(run_log, "compose", "ok", f"Media files set via: {sel}")
-    except RuntimeError:
-        raise  # DOM_CHANGED
+    except Exception as exc:
+        raise RuntimeError(f"{DOM_CHANGED} - file_input failed: {exc}")
 
     # Bug fix: wait for upload to actually process before continuing.
     # Images: thumbnail appears quickly (~2s). Videos: encoding takes longer (~10s).
@@ -335,7 +337,9 @@ def publish_post(page, selectors: dict, timeout: int, run_log: Path) -> bool:
 
         try:
             btn, sel = try_selector(page, "publish_button", selectors, timeout)
-            btn.click()
+            # Give the button a moment to enable after media upload finishes
+            page.wait_for_timeout(2000)
+            btn.click(timeout=8000)
             # Wait for post confirmation: composer should close or a confirmation shown
             page.wait_for_timeout(3000)
 

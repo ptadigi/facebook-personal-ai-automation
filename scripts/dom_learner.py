@@ -34,22 +34,29 @@ DEFAULT_HISTORY = SKILL_ROOT / "references" / "selector-map.history.jsonl"
 PROBE_CANDIDATES: dict[str, list[str]] = {
     "open_composer": [
         "[aria-label=\"What's on your mind?\"]",
+        "[aria-label=\"Bạn đang nghĩ gì?\"]",
         "[data-testid='status-attachment-mentions-input']",
         "div[role='button']:has-text(\"What's on your mind\")",
+        "div[role='button']:has-text(\"Bạn đang nghĩ gì\")",
         "//div[@role='button'][contains(., \"What's on your mind\")]",
+        "//div[@role='button'][contains(., \"Bạn đang nghĩ gì\")]",
     ],
     "text_input": [
         "div[contenteditable='true'][role='textbox']",
         "[data-testid='react-composer-root'] div[contenteditable='true']",
         "[aria-label*='post'][contenteditable='true']",
+        "[aria-label*='bài viết'][contenteditable='true']",
         "//div[@role='textbox' and @contenteditable='true']",
     ],
     "media_button": [
         "[aria-label='Photo/video']",
+        "[aria-label='Ảnh/video']",
         "[aria-label='Photo']",
+        "[aria-label='Ảnh']",
         "[data-testid='photo-video-button']",
         "div[role='button'][aria-label*='Photo']",
-        "//div[@role='button'][contains(@aria-label,'Photo')]",
+        "div[role='button'][aria-label*='Ảnh']",
+        "//div[@role='button'][contains(@aria-label,'Ảnh')]",
     ],
     "file_input": [
         "input[type='file'][accept*='image']",
@@ -59,22 +66,28 @@ PROBE_CANDIDATES: dict[str, list[str]] = {
     ],
     "schedule_entry": [
         "[aria-label='Schedule post']",
+        "[aria-label='Lên lịch đăng bài']",
         "[aria-label*='Schedule']",
+        "[aria-label*='Lên lịch']",
         "div[role='menuitem']:has-text('Schedule')",
+        "div[role='menuitem']:has-text('Lên lịch')",
         "div[role='button']:has-text('Schedule post')",
-        "//div[@role='menuitem'][contains(.,'Schedule')]",
+        "div[role='button']:has-text('Lên lịch đăng bài')",
     ],
     "publish_button": [
         "div[aria-label='Post'][role='button']",
+        "div[aria-label='Đăng'][role='button']",
         "[data-testid='react-composer-post-button']",
         "div[role='button']:has-text('Post')",
-        "//div[@role='button'][@aria-label='Post']",
+        "div[role='button']:has-text('Đăng')",
+        "//div[@role='button'][@aria-label='Đăng']",
     ],
     "schedule_confirm": [
         "div[role='dialog'] div[role='button'][aria-label='Schedule']",
+        "div[role='dialog'] div[role='button'][aria-label='Lên lịch']",
         "div[role='dialog'] div[role='button']:has-text('Schedule')",
+        "div[role='dialog'] div[role='button']:has-text('Lên lịch')",
         "[data-testid='schedule-confirm-button']",
-        "//div[@role='dialog']//div[@role='button'][contains(.,'Schedule')]",
     ],
 }
 
