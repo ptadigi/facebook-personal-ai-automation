@@ -134,9 +134,7 @@ def try_selector(page, action: str, selectors: dict, timeout: int = 5000):
                 loc = page.locator(f"xpath={sel}")
             else:
                 loc = page.locator(sel)
-            
-            wait_state = "attached" if action == "file_input" else "visible"
-            loc.first.wait_for(state=wait_state, timeout=timeout)
+            loc.first.wait_for(state="visible", timeout=timeout)
             return loc.first, sel
         except Exception:
             continue
@@ -235,27 +233,43 @@ def attach_media(page, media_paths: list[str], selectors: dict, timeout: int, ru
         return
     log_event(run_log, "compose", "ok", f"Attaching {len(media_paths)} media file(s)")
 
-    # Click the media button to reveal the file input
-    try:
-        btn, sel = try_selector(page, "media_button", selectors, timeout)
-        btn.click(timeout=8000)
-        page.wait_for_timeout(1000)
-        log_event(run_log, "compose", "ok", f"Media button clicked via: {sel}")
-    except Exception as exc:
-        raise RuntimeError(f"{DOM_CHANGED} - media_button failed: {exc}")
+    # Fast path: many FB layouts already render a file input in composer.
+    # Try direct set_input_files first to avoid brittle media-button clicks.
+    direct_inputs = [
+        "div[role='dialog'] input[type='file']",
+        "input[type='file'][accept*='image']",
+        "input[type='file'][accept*='video']",
+        "input[type='file']",
+    ]
+    for ds in direct_inputs:
+        try:
+            loc = page.locator(ds).first
+            if loc.count() > 0:
+                loc.set_input_files(media_paths, timeout=5000)
+                log_event(run_log, "compose", "ok", f"Media files set directly via: {ds}")
+                break
+        except Exception:
+            continue
+    else:
+        # Fallback: click media button then locate file input
+        try:
+            btn, sel = try_selector(page, "media_button", selectors, timeout)
+            btn.click(timeout=5000)
+            page.wait_for_timeout(1000)
+            log_event(run_log, "compose", "ok", f"Media button clicked via: {sel}")
+        except Exception:
+            raise RuntimeError("DOM_CHANGED")
 
-    # Use file_input selector to upload
-    try:
-        inp, sel = try_selector(page, "file_input", selectors, timeout)
-        inp.set_input_files(media_paths, timeout=8000)
-        log_event(run_log, "compose", "ok", f"Media files set via: {sel}")
-    except Exception as exc:
-        raise RuntimeError(f"{DOM_CHANGED} - file_input failed: {exc}")
+        try:
+            inp, sel = try_selector(page, "file_input", selectors, timeout)
+            inp.set_input_files(media_paths)
+            log_event(run_log, "compose", "ok", f"Media files set via: {sel}")
+        except Exception:
+            raise RuntimeError("DOM_CHANGED")
 
-    # Bug fix: wait for upload to actually process before continuing.
-    # Images: thumbnail appears quickly (~2s). Videos: encoding takes longer (~10s).
+    # Wait for upload processing.
     has_video = any(p.lower().endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")) for p in media_paths)
-    upload_wait_ms = 10000 if has_video else 3000
+    upload_wait_ms = 12000 if has_video else 4000
     log_event(run_log, "compose", "ok", f"Waiting {upload_wait_ms}ms for media upload to process...")
     page.wait_for_timeout(upload_wait_ms)
 
@@ -337,11 +351,33 @@ def publish_post(page, selectors: dict, timeout: int, run_log: Path) -> bool:
 
         try:
             btn, sel = try_selector(page, "publish_button", selectors, timeout)
-            # Give the button a moment to enable after media upload finishes
-            page.wait_for_timeout(2000)
-            btn.click(timeout=8000)
+            try:
+                btn.click(timeout=5000)
+            except Exception:
+                # Fallback click strategy for dynamic FB buttons
+                clicked = False
+                click_candidates = [
+                    "[role='button'][aria-label='Đăng']",
+                    "[role='button'][aria-label='Post']",
+                    "[role='button']:has-text('Đăng')",
+                    "[role='button']:has-text('Post')",
+                    "div[role='button'][aria-label='Đăng']",
+                    "div[role='button'][aria-label='Post']",
+                ]
+                for cs in click_candidates:
+                    try:
+                        c = page.locator(cs).first
+                        if c.count() > 0:
+                            c.click(timeout=3000, force=True)
+                            sel = cs
+                            clicked = True
+                            break
+                    except Exception:
+                        continue
+                if not clicked:
+                    raise
             # Wait for post confirmation: composer should close or a confirmation shown
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(5000)
 
             # Simple heuristic: if the composer dialog is gone, assume success
             dialog = page.locator("div[role='dialog']")
