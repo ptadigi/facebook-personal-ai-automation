@@ -1,5 +1,11 @@
+---
+last_updated: 2026-03-05
+compatible_scripts: v2.1.x
+skill: facebook-personal-ai-automation
+---
+
 # Antigravity Integration Guide
-**Skill:** `facebook-personal-ai-automation` · **Version:** 2.1.0
+**Version:** 2.1.0 · **Compatible scripts:** v2.1.x · **Last updated:** 2026-03-05
 
 ---
 
@@ -136,6 +142,23 @@ def validate_schedule(schedule: str | None):
 
 ---
 
+## Confirmation Policy (No Surprise Publish)
+
+- **Không bao giờ publish tự động** khi không có approval flag rõ ràng từ user hoặc workflow.
+- Khi trạng thái approval không rõ → dùng `--dry-run` (trả về `WAIT_APPROVAL`, không publish).
+- Khi phát hiện rủi ro compliance hoặc policy → escalate ngay lên operator, không tự quyết.
+
+```python
+def decide_approve(user_intent: str, workflow_flags: dict) -> bool:
+    """Return True only if explicitly approved."""
+    explicit_approve = workflow_flags.get("auto_approve", False)
+    user_said_yes = any(w in user_intent.lower() for w in ["approve", "đăng ngay", "ok publish"])
+    return explicit_approve or user_said_yes
+    # Default: False → use dry-run
+```
+
+---
+
 ## Output Contract Parser
 
 ```python
@@ -157,7 +180,6 @@ def parse_output(stdout: str) -> dict:
         return {"status": "wait_approval"}
 
     if last.startswith("FAIL:"):
-        # FAIL: ERROR_CODE - reason
         body = last[len("FAIL: "):]
         code, _, reason = body.partition(" - ")
         return {"status": "failed", "error_code": code.strip(), "reason": reason.strip()}
@@ -175,8 +197,8 @@ parse_output → error_code == "AUTH_REQUIRED"
 
 Antigravity response:
   1. Log: f"[fb-autoposter] AUTH_REQUIRED for account {account_id}"
-  2. Mark account status = "expired" in working memory
-  3. Return to user:
+  2. Đánh dấu account status = "expired" trong working memory
+  3. Trả về user:
      "Session expired for '{account_id}'. Please:
       1. Re-login to Facebook in Chrome
       2. Export cookies (Cookie-Editor → JSON)
@@ -206,10 +228,10 @@ Antigravity response:
 parse_output → error_code == "RATE_LIMIT"
 
 Antigravity response:
-  1. Compute retry_at = now + 45 minutes (ISO 8601 with +07:00)
-  2. Run scheduler --add to queue retry
+  1. Compute retry_at = now + 45 minutes (ISO 8601 với +07:00)
+  2. Chạy scheduler --add để queue retry
   3. Notify: "Rate limited. Retry queued at {retry_at}"
-  4. If same account hits RATE_LIMIT 3+ times today → escalate
+  4. Nếu cùng account RATE_LIMIT 3+ lần trong ngày → escalate
 ```
 
 ### PUBLISH_FAILED
@@ -217,12 +239,12 @@ Antigravity response:
 parse_output → error_code == "PUBLISH_FAILED"
 
 Antigravity response:
-  1. Wait 10 seconds
-  2. One additional retry
-  3. If success → report
-  4. If still fails:
-     → List screenshots: run_command(["ls", "*.png"])  # or dir *.png on Windows
-     → Suggest: test session, check FB status
+  1. Chờ 10 giây
+  2. Retry một lần
+  3. Nếu thành công → báo kết quả
+  4. Nếu vẫn thất bại:
+     → Liệt kê screenshot: run_command(["dir", "*.png"])
+     → Gợi ý: test session, kiểm tra trạng thái FB
      → Escalate to user
 ```
 
@@ -264,15 +286,15 @@ Agent:   [run post] → FAIL: DOM_CHANGED - All selectors failed for open_compos
 ## Operator Checklist
 
 ```
-[ ] SKILL.md in repo root loaded into Antigravity context
-[ ] Working directory set to repo root before all run_command calls
-[ ] accounts/accounts.json has at least 1 active account
-[ ] accounts/<id>/cookies.json and accounts/<id>/fingerprint.json exist
+[ ] SKILL.md in repo root đã được load vào Antigravity context
+[ ] Working directory là repo root trước tất cả run_command calls
+[ ] accounts/accounts.json có ít nhất 1 active account
+[ ] accounts/<id>/cookies.json và accounts/<id>/fingerprint.json tồn tại
 [ ] account_manager.py test --id <id> → ACTIVE
-[ ] references/selector-map.json present with "open_composer" key
-[ ] POST_TIMEOUT_SECONDS=300 if posting videos > 50MB
-[ ] validate_account() called before every post command
-[ ] parse_output() used to interpret all stdout results
+[ ] references/selector-map.json tồn tại với key "open_composer"
+[ ] POST_TIMEOUT_SECONDS=300 nếu post video > 50MB
+[ ] validate_account() được gọi trước mọi post command
+[ ] parse_output() được dùng để interpret tất cả stdout results
 ```
 
 ---
@@ -295,4 +317,4 @@ All runs append to `references/run-log.jsonl`:
 }
 ```
 
-Antigravity can read this file to provide operation history to users.
+Antigravity có thể đọc file này để cung cấp operation history cho user.

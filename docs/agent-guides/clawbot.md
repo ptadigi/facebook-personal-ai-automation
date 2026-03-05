@@ -1,5 +1,11 @@
+---
+last_updated: 2026-03-05
+compatible_scripts: v2.1.x
+skill: facebook-personal-ai-automation
+---
+
 # Clawbot Integration Guide
-**Skill:** `facebook-personal-ai-automation` · **Version:** 2.1.0
+**Version:** 2.1.0 · **Compatible scripts:** v2.1.x · **Last updated:** 2026-03-05
 
 ---
 
@@ -76,14 +82,28 @@ if not text and not media_paths:
 
 ---
 
+## Confirmation Policy (No Surprise Publish)
+
+- **Không bao giờ tự động đăng** trừ khi user xác nhận rõ hoặc yêu cầu `--auto-approve`.
+- Nếu lệnh không rõ ràng → hỏi xác nhận trước khi chạy `post.py`.
+- Với nội dung rủi ro (link, video chưa xem trước) → ưu tiên chạy `--dry-run` trước để preview.
+- Flow mặc định: **validate → preview → confirm → publish**.
+
+```
+User:    "đăng bài về sản phẩm mới"
+Clawbot: ⚠️ Bạn muốn đăng nội dung gì? Hãy gõ nội dung bài hoặc chọn file media.
+         (Không tự post khi chưa có nội dung cụ thể)
+```
+
+---
+
 ## Error Handling Runbook
 
 ### AUTH_REQUIRED
 ```
-Detected:   stdout contains "FAIL: AUTH_REQUIRED"
-Auto-action: Mark account as expired in local state
-             Display fix instructions to user
-Escalate:   Always — needs new cookies from user
+Detected:    stdout contains "FAIL: AUTH_REQUIRED"
+Auto-action: Đánh dấu account hết hạn, hiển thị hướng dẫn
+Escalate:    Luôn — cần cookie mới từ user
 
 User message:
   ❌ Phiên đăng nhập hết hạn cho account '{id}'.
@@ -96,30 +116,30 @@ User message:
 
 ### DOM_CHANGED
 ```
-Detected:   stdout contains "FAIL: DOM_CHANGED"
+Detected:    stdout contains "FAIL: DOM_CHANGED"
 Auto-action:
-  1. Run dom_learner.py:
+  1. Chạy dom_learner.py:
      python scripts/dom_learner.py --cookie-file accounts/{id}/cookies.json --account {id}
-  2. If exit 0 → retry original post once
-  3. If retry fails → escalate
+  2. Nếu exit 0 → retry post một lần
+  3. Nếu retry thất bại → escalate
 
-Escalate when: dom_learner itself fails OR second DOM_CHANGED in a row
+Escalate khi: dom_learner thất bại HOẶC DOM_CHANGED lần 2 liên tiếp
 
-User message (if escalate):
+User message (nếu escalate):
   ⚠️ Facebook đổi giao diện, cần fix thủ công:
   python scripts/dom_learner.py --account {id} --cookie-file accounts/{id}/cookies.json
 ```
 
 ### RATE_LIMIT
 ```
-Detected:   stdout contains "FAIL: RATE_LIMIT"
+Detected:    stdout contains "FAIL: RATE_LIMIT"
 Auto-action:
-  1. Queue post for retry in 45 minutes:
+  1. Queue retry sau 45 phút:
      python scripts/scheduler.py --add --account {id} --text "..." \
        --schedule "{now + 45min in ISO8601}"
-  2. Notify user: "Queued retry at {time}"
+  2. Notify user: "Đã đặt lịch retry lúc {time}"
 
-Escalate when: 3 consecutive RATE_LIMIT on same account in one day
+Escalate khi: 3+ RATE_LIMIT cùng account trong 1 ngày
 
 User message:
   ⏳ Facebook đang giới hạn tốc độ. Đã đặt lịch đăng lại sau 45 phút: {time}
@@ -127,13 +147,13 @@ User message:
 
 ### PUBLISH_FAILED
 ```
-Detected:   stdout contains "FAIL: PUBLISH_FAILED"
+Detected:    stdout contains "FAIL: PUBLISH_FAILED"
 Auto-action:
-  1. Wait 10 seconds
-  2. Retry once (post.py already did 3 internal retries)
-  3. If still fails → escalate
+  1. Chờ 10 giây
+  2. Retry một lần (post.py đã tự retry 3 lần nội bộ)
+  3. Nếu vẫn thất bại → escalate
 
-Escalate when: all retries exhausted
+Escalate khi: tất cả retry đều thất bại
 
 User message:
   ❌ Không thể đăng bài sau nhiều lần thử.
