@@ -204,7 +204,7 @@ def main():
     parser.add_argument("--account", default=None,
                         help="P2-5: Account ID to load fingerprint from (e.g. pham_thanh). "
                              "Uses account UA/viewport instead of default headless signature.")
-    parser.add_argument("--headless", action="store_true", help="Run browser headlessly")
+    parser.add_argument("--headed", action="store_true", help="Run browser in headed mode (visible UI)")
     parser.add_argument("--interactive", action="store_true",
                         help="Pause at each action for manual verification")
     parser.add_argument("--timeout", type=int, default=5000, help="Per-selector wait timeout ms")
@@ -257,7 +257,7 @@ def main():
     changes: dict[str, dict] = {}
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=args.headless)
+        browser = pw.chromium.launch(headless=not args.headed)
         context = browser.new_context(**ctx_opts)
         if _fp_init_script:
             context.add_init_script(_fp_init_script)

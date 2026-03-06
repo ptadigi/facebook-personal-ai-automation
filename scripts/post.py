@@ -223,7 +223,8 @@ def enter_text(page, text: str, selectors: dict, timeout: int, run_log: Path):
     log_event(run_log, "compose", "ok", "Entering text")
     el, sel = try_selector(page, "text_input", selectors, timeout)
     el.click()
-    el.type(text, delay=30)
+    # Replace stream typing with instant paste
+    page.keyboard.insert_text(text)
     log_event(run_log, "compose", "ok", f"Text entered via: {sel}")
 
 
@@ -549,7 +550,7 @@ def parse_args():
                    help="Compose but do NOT publish — always outputs WAIT_APPROVAL")
     p.add_argument("--auto-approve", action="store_true",
                    help="Skip approval prompt and publish immediately")
-    p.add_argument("--headless", action="store_true", help="Run browser in headless mode")
+    p.add_argument("--headed", action="store_true", help="Run browser in headed mode (visible UI)")
     p.add_argument("--timeout", type=int, default=10000, help="Per-action timeout in ms")
     p.add_argument("--selector-map", default=str(DEFAULT_SELECTOR_MAP))
     p.add_argument("--run-log", default=str(DEFAULT_RUN_LOG))
@@ -798,12 +799,12 @@ def main():
             log_event(run_log, "browser", "ok", f"Using persistent profile: {profile_dir}")
             context = pw.chromium.launch_persistent_context(
                 user_data_dir=str(profile_dir),
-                headless=args.headless,
+                headless=not args.headed,
                 **ctx_opts
             )
             page = context.pages[0] if context.pages else context.new_page()
         else:
-            browser = pw.chromium.launch(headless=args.headless)
+            browser = pw.chromium.launch(headless=not args.headed)
             context = browser.new_context(**ctx_opts)
 
             # Inject fingerprint JS overrides
